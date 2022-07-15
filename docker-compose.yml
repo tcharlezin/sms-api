@@ -1,0 +1,69 @@
+version: '3'
+services:
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.22
+    container_name: db-sms
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "33070:3306"
+    environment:
+      MYSQL_DATABASE: sms
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: default
+      MYSQL_PASSWORD: default
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql/
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - sms-network
+
+  #PHP Service
+  app:
+    build:
+      args:
+        user: www
+        uid: 1000
+      context: .
+      dockerfile: Dockerfile
+    image: sms-api
+    container_name: app-sms
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - sms-network
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: nginx-sms
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/development/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - sms-network
+
+#Docker Networks
+networks:
+  sms-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local
